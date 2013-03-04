@@ -23,7 +23,7 @@
                           ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~  
                               with   this   lovely
                                  ~ ~ ~ ~ ~ ~ ~ ~ 
-                                  / license.
+                                  / library.
                                  /  ~ ~ ~ ~
                                 /    Love,
                           #    /      '.'
@@ -32,7 +32,7 @@
                           ###
                           #
     
-               -- the author.
+               -- Pygy
     
     
                P.S.: Even though I poured my heart into this work, 
