@@ -24,12 +24,12 @@ type ParserState
     options
     BOM::Bool
 
-    function ParserState(txt::ASCIIString, options::Any) 
+    function ParserState(txt::String, options::Any) 
         utf = ""
         try
             utf = Base.utf8(txt)
         catch
-            error("TOML.parse(): Invalid input. UTF-8 text expected.")
+            error("TOML.parse(): Input conversion to UTF-8 failed.")
         end
         ParserState(utf, options)
     end
