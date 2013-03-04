@@ -1,4 +1,4 @@
-# TOML.jl: A [TOML](https://github.com/mojombo/toml) parser for Julia.
+# TOML.jl: A [TOML](https://github.com/mojombo/toml) parser for [Julia](julialang.org).
 
 ```Julia
 julia> require("TOML")
