@@ -5,7 +5,7 @@ using Base
 using Calendar
 # version = ""
 
-DBG = true#false
+DBG = false
 
 macro debug (msg)
     if DBG
@@ -280,7 +280,7 @@ function value (state)
         return false
     elseif idem("0000-00-00T00:00:00Z", state.txt, state.index - 1)
         d = match(date_pattern, state.txt, state.index - 1)
-        d = Calendar.ymd_hms(map(parse_int, d.captures)...)
+        d = Calendar.ymd_hms(map(parse_int, d.captures)...,"UTC")
         state.index += 19
         return Date(d)
     elseif c == '-' || '0' <= c <= '9'
