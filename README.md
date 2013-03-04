@@ -71,3 +71,7 @@ a long string."# returns "Let's prented this is a long string."
 julia> TOML.parse("tup=(1,\"e\")",Set(:tuple))
 ["tup"=>(1,"e")]
 ```
+
+## TODO:
+
+Add the package to METADATA.jl
