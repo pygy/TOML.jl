@@ -338,9 +338,14 @@ function string_chunk (state::ParserState,buf::Array{Char,1})
             end
         end
         if chr == '\\'
-            chr = unescape(nextchar!(state))
-            if chr == :invalid
-                error("Invalid escape sequence in string.")
+            chr = nextchar!(state)
+            if chr == 'x'
+                chr = parse_int(string([nextchar!(state),nextchar!(state)]...))
+            else
+                chr = unescape(chr)
+                if chr == :invalid
+                    error("Invalid escape sequence in string.")
+                end
             end
         end
         if chr == '\0' 
