@@ -66,9 +66,7 @@ function idem(needle::String, haystack::String, idx)
     return true
 end
 
-type Date
-    data
-end
+indexify(a) =  ( i = 0; map(e->(i+=1,e),a) )
 
 utf8(chars::Array{Char,1}) = utf8(CharString(chars))
 
@@ -193,19 +191,21 @@ function section (state::ParserState)
     end
     @debug ("Section1: $k\n")
     state.index += length(k.match.data) 
-    endline!(state)
     trim = r"(.*[^ \t])[ \t]*$"
     m = match( trim, k.captures[1] )
-    k = m.captures[1]
+    ks = m.captures[1]
 
-    if length(k) == 0
+    if length(ks) == 0
         error("Section name can't be empty")
     end
-    keys = split(k,".")
+    keys = split(ks,".")
     H = state.result
-    for k in keys
+    for (i, k) in indexify(keys)
+        if k == ""
+            error("Empty key name is not allowed in $ks on line $(state.line)")
+        end
         if has(H,k)
-            if isa(H[k],Dict)
+            if isa(H[k],Dict) && i != length(keys)
                 H = H[k]
             else
                 error("Key \"$k\" already defined in \"$(join(keys, '.'))\" on line $(state.line).")
@@ -215,6 +215,7 @@ function section (state::ParserState)
             H = H[k]
         end
     end
+    endline!(state)
     state.stack = (Union(Dict,Array))[H]
     seek_key
 end
