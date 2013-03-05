@@ -35,7 +35,7 @@ type ParserState
     end
 
     function ParserState(txt::UTF8String, options::Any)
-        BOM = txt[1] == '\ufeff'  ? true : false
+        BOM = length(txt) > 0 && txt[1] == '\ufeff'  ? true : false
         ParserState(
             txt,
             BOM ? 4 : 1, #index. Strip the BOM if present.
@@ -419,16 +419,14 @@ function array_value(state)
     global arlv
     arlv +=1
     @debug "Array level $arlv\n"
-    first = true
     ary = {}
     local typ = Any
     while next_non_comment!(state) != ']'
         state.index -= 1
         val = value(state)
-        if has(state.options, :strictArray) && first
+        if has(state.options, :strictArray) && length(ary) == 0
             typ = typeof(val)
             ary = (typ)[]
-            first = false
         end
         if isa(val, typ)
             @debug "++++++++++ $ary  $val  $typ\n"
