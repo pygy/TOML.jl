@@ -432,6 +432,7 @@ function array_value(state)
         val = value(state)
         if has(state.options, :strictArray) && length(ary) == 0
             typ = typeof(val)
+            typ = typ <: Array ? Array : typ
             ary = (typ)[]
         end
         if isa(val, typ)
