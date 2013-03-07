@@ -29,7 +29,7 @@ type ParserState
         try
             utf = Base.utf8(txt)
         catch
-            error("TOML.parse(): Input conversion to UTF-8 failed.")
+            throw ("TOML.parse(): Input conversion to UTF-8 failed.")
         end
         ParserState(utf, options)
     end
@@ -125,7 +125,7 @@ function endline! (state::ParserState)
         end
         return
     else
-        error("Illegal character \'$c\' on line $(state.line).")
+        throw ("Illegal character \'$c\' on line $(state.line).")
     end
 end
 
@@ -187,7 +187,7 @@ function section (state::ParserState)
     r = r"[ \t]*([^ \t\r\n][^\]\r\n]*)\]"
     k = match(r,state.txt,state.index)
     if k == nothing
-        error("Badly formed section.")
+        throw ("Badly formed section.")
     end
     @debug ("Section1: $k\n")
     state.index += length(k.match.data) 
@@ -196,19 +196,19 @@ function section (state::ParserState)
     ks = m.captures[1]
 
     if length(ks) == 0
-        error("Section name can't be empty")
+        throw ("Section name can't be empty")
     end
     keys = split(ks,".")
     H = state.result
     for (i, k) in indexify(keys)
         if k == ""
-            error("Empty key name is not allowed in $ks on line $(state.line)")
+            throw ("Empty key name is not allowed in $ks on line $(state.line)")
         end
         if has(H,k)
             if isa(H[k],Dict) && i != length(keys)
                 H = H[k]
             else
-                error("Key \"$k\" already defined in \"$(join(keys, '.'))\" on line $(state.line).")
+                throw ("Key \"$k\" already defined in \"$(join(keys, '.'))\" on line $(state.line).")
             end
         else
             H[k] = (UTF8String => Any)[]
@@ -231,25 +231,25 @@ function key (state)
     end
 
     if c != '='
-        error("New lines are forbidden in key names. On line $(state.line).")
+        throw ("New lines are forbidden in key names. On line $(state.line).")
     end
 
     k = state.txt[i1:state.index-2]
     @debug "$k|\n"
     if k == nothing
-        error("Badly formed key.")
+        throw ("Badly formed key.")
     end
     
 
     trim = r"(.*[^ \t])[ \t]*$"
     k = match( trim, k).captures[1]
     if k == ""
-        error("Key name can't be empty")
+        throw ("Key name can't be empty")
     end
 
     @debug ("Key: $k\n")
     if has(last(state.stack), k)
-        error("Attempt to redefine key \"$k\" on line $(state.line)")
+        throw ("Attempt to redefine key \"$k\" on line $(state.line)")
     end
     last(state.stack)[k] = value(state)
     endline!(state)
@@ -262,7 +262,7 @@ function value (state)
     @debug ("Value\n")
     c = next_non_space!(state)
     if c == :eof || endlineP(char,state)
-        error("Empty value on line $(state.line - 1)")
+        throw ("Empty value on line $(state.line - 1)")
     end
 
     if c == '"'
@@ -288,7 +288,7 @@ function value (state)
         state.index -= 1
         return numeric_value(state)
     else 
-        error("Invalid value on line $(state.line)")
+        throw ("Invalid value on line $(state.line)")
     end
 end
 
@@ -315,7 +315,7 @@ function string_value (state::ParserState)
             if next_non_comment!(state) == '"'
                 string_chunk(state,buf)
             else
-                error("String chunk expected on line $(state.line).")
+                throw ("String chunk expected on line $(state.line).")
             end
         end
         state.index -= 1
@@ -329,13 +329,13 @@ function string_chunk (state::ParserState,buf::Array{Char,1})
     @debug ("+++ Start String Chunk\n")
     while (chr = nextchar!(state)) != '"'
         if chr == :eof
-            error("Unexpected end of file in a string.")
+            throw ("Unexpected end of file in a string.")
         end
         while endlineP(chr, state)
             if has(state.options, :splitString)
                 chr = nextchar!(state)
             else
-                error("Unexpected end of file/line in a string.")
+                throw ("Unexpected end of file/line in a string.")
             end
         end
         if chr == '\\'
@@ -345,7 +345,7 @@ function string_chunk (state::ParserState,buf::Array{Char,1})
             else
                 chr = unescape(chr)
                 if chr == :invalid
-                    error("Invalid escape sequence in string.")
+                    throw ("Invalid escape sequence in string.")
                 end
             end
         end
@@ -362,7 +362,7 @@ function long_string_value (state::ParserState)
     state.index += 2 # skip the remaining quotes.
     char = next_non_space!(state)
     if !endlineP(char,state)
-        error ("Unexpected character \"$char\"on line $(state.line - 1).\n"
+        throw  ("Unexpected character \"$char\"on line $(state.line - 1).\n"
              * "A multi-line string starts on the line following the three quotes.")
     end
     buf = (Char)[]
@@ -414,7 +414,7 @@ function numeric_value (state::ParserState)
     end
     state.index -= c==:eof ? 0 : 1
     if last(acc) == '.'
-        error("Badly formed number on line $(state.line).")
+        throw ("Badly formed number on line $(state.line).")
     end
     return parse_float(Float64, string(acc...))
 end
@@ -441,14 +441,14 @@ function array_value(state)
             @debug "++++++++++ $ary  $val  $typ\n"
             push!(ary, val)
         else
-            error("Bad type in Array on line $(state.line).")
+            throw ("Bad type in Array on line $(state.line).")
         end
         # handle the coma:
         c = next_non_comment!(state) 
         if c == ']'
             break
         elseif c != ','
-            error("Syntax error in array. Coma expected on line $(state.line).")
+            throw ("Syntax error in array. Coma expected on line $(state.line).")
         end
     end
     @debug "// Array level $arlv\n"
@@ -472,7 +472,7 @@ function tuple_value(state)
         if c == ')'
             break
         elseif c != ','
-            error("Syntax error in tuple. Coma expected on line $(state.line).")
+            throw ("Syntax error in tuple. Coma expected on line $(state.line).")
         end
     end
     return tuple(ary...)
