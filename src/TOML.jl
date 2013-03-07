@@ -1,172 +1,64 @@
-
 module TOML
-require("Calendar")
-using Base
-using Calendar
-# version = ""
+
+VERSION = "0.2.0"
+
+include("datetime.jl")
 
 DBG = false
 
 macro debug (msg)
     if DBG
-        :(print ($msg))
+        :(println ($msg))
     end
 end
-
-default_options=Set()
 
 type ParserState
     txt::UTF8String
     index::Integer
     line::Integer
     result::Dict{UTF8String,Any}
-    stack::Array{Union(Dict,Array)}
-    options
+    cur_tbl::Dict{UTF8String,Any}
+    tblarystack::Array
     BOM::Bool
 
-    function ParserState(txt::String, options::Any) 
-        utf = ""
-        try
-            utf = Base.utf8(txt)
-        catch
-            throw ("TOML.parse(): Input conversion to UTF-8 failed.")
-        end
-        ParserState(utf, options)
-    end
-
-    function ParserState(txt::UTF8String, options::Any)
+    function ParserState(txt::UTF8String)
+        @debug "ParserState(\n$(txt))"
         BOM = length(txt) > 0 && txt[1] == '\ufeff'  ? true : false
-        ParserState(
-            txt,
-            BOM ? 4 : 1, #index. Strip the BOM if present.
-            1, #line
-            (UTF8String => Any)[], #result
-            options,
+        maintbl = (UTF8String => Any)[]
+        state = new(
+            txt,         # subject
+            BOM ? 4 : 1, # index. Strip the BOM if present.
+            1,           # line
+            maintbl,     # result
+            maintbl,     # cur_tbl
+            {},          # table array stack
             BOM
         )
+        state
     end
 
-    ParserState(txt, index, line, result, options, BOM) = new(txt, index, line, result, (Union(Dict,Array))[result], options, BOM)
+    function ParserState(txt::String)
+        # try
+            txt = ParserState(Base.utf8(txt))
+        # catch
+        #     error("TOML.parse(): Input conversion to UTF-8 failed.")
+        # end
+    end
 
-    ParserState(file::IOStream, options::Any) = ParserState(readall(file), options)
-
-    ParserState(src::Any) = ParserState(src, default_options)
+    ParserState(file::IOStream) = ParserState(readall(file))
 end
 
-function idem(needle::String, haystack::String, idx)
-    for c1 in needle
-        if done(haystack, idx)
-            return false
-        end
-        c2, idx = next(haystack, idx)
-        if !(c2 == c1 || (c1 == '0' && ('0' <= c2 <= '9')))
-            return false
-        end
-    end
-    return true
-end
+include("util.jl")
 
-indexify(a) =  ( i = 0; map(e->(i+=1,e),a) )
-
-utf8(chars::Array{Char,1}) = utf8(CharString(chars))
-
-getchar(state::ParserState) = state.txt[state.index]
-
-# function nextchar(state::ParserState) 
-#     if !done(state.txt, state.index)
-#         next(state.txt, state.index)
-#     else
-#         (:eof, state.index)
-#     end
-# end
-
-
-
-function nextchar!(state::ParserState) 
-    if done(state.txt, state.index)
-        return :eof
-    end
-    (char, state.index) = next(state.txt, state.index)
-    @debug ("Char: $char\n")
-    char
-end
-
-function next_non_space! (state::ParserState)
-    while true
-        c = nextchar!(state)
-        if c != ' ' && c != '\t'
-            return c
-        end
-    end
-end
-
-function endlineP (c, state::ParserState)
-    if c == '\r' && state.txt[state.index + 1] == '\n'
-        nextchar!(state)
-    end
-    if c == '\r' || c == '\n'
-        state.line += 1
-        @debug ("======= End Line\n")
-        return true
-    else
-        return false
-    end
-end
-
-function endline! (state::ParserState)
-    c = next_non_space!(state);
-    if endlineP(c, state)
-        return
-    elseif c == :eof
-        return
-    elseif c == '#'
-        while (c = nextchar!(state); !endlineP(c, state) && c != :eof)
-            true
-        end
-        return
-    else
-        throw ("Illegal character \'$c\' on line $(state.line).")
-    end
-end
-
-function next_non_comment! (state::ParserState)
-    local in_comment = false
-    while true
-        c = nextchar!(state)
-        if in_comment
-            if c == :eof
-                return c
-            elseif endlineP(c, state)
-                in_comment = false
-            end
-        else
-            if c == '#'
-                in_comment = true
-            elseif  !endlineP(c,state) && c != ' ' && c != '\t'
-                return c
-            end
-        end
-    end
-end
-
-function parse(txt, options)
-    state = ParserState(txt, options)
+function parse(txt)
+    state = ParserState(txt)
     func = seek_key(state)
+    # trampoline
     while isa(func, Function)
         func = func(state)
     end
     return state.result
 end
-
-parse(txt) = parse(txt,default_options)
-
-# function rewind (state::ParserState)
-#         i = state.index - 1
-#         while state.txt.data[i] & 0xc0 == 0xa0
-#             i -= 1
-#         end
-#         state.index = i
-# end
 
 function seek_key (state::ParserState)
     @debug ("Seek Key\n")
@@ -175,40 +67,51 @@ function seek_key (state::ParserState)
     if char == :eof
         return :eof
     end
-    if char == '['
-        section
-    else
-        state.index -= 1;
+    if char != '['
+        state.index -= 1
         key
+    elseif state.txt[state.index] == '['
+        state.index += 1
+        tablearray
+    else
+        table
     end
 end
 
-function section (state::ParserState)
-    r = r"[ \t]*([^ \t\r\n][^\]\r\n]*)\]"
-    k = match(r,state.txt,state.index)
-    if k == nothing
-        throw ("Badly formed section.")
-    end
-    @debug ("Section1: $k\n")
-    state.index += length(k.match.data) 
-    trim = r"(.*[^ \t])[ \t]*$"
-    m = match( trim, k.captures[1] )
-    ks = m.captures[1]
+const tabl = Regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]", Base.PCRE.ANCHORED)
 
-    if length(ks) == 0
-        throw ("Section name can't be empty")
+function table (state::ParserState)
+    m = match(tabl, state.txt, state.index)
+    if m == nothing
+        error("Badly formed table name.")
     end
-    keys = split(ks,".")
+    state.index += m.match.endof
+    ks = strip(m.captures[1])
+
+    if ks == ""
+        error("Section name can't be empty")
+    end
+
+    @debug ("Section1: $ks")
+
+    if contains(ks, "[")
+        error("Opening brackets '[' are forbidden in table names.")
+    end
+
+    keys = map(strip, split(ks, "."))
     H = state.result
-    for (i, k) in indexify(keys)
+    for (i, k) in enumerate(keys)
         if k == ""
-            throw ("Empty key name is not allowed in $ks on line $(state.line)")
+            error("Empty key name is not allowed in $k on line $(state.line)")
         end
-        if has(H,k)
-            if isa(H[k],Dict) && i != length(keys)
+        if haskey(H,k)
+            if isa(H[k],Dict) && (
+                i != length(keys) ||
+                any(values(H[k])) do v ;; isa(v, Dict) end # a sub-dictionary has already been defined.
+            )
                 H = H[k]
-            else
-                throw ("Key \"$k\" already defined in \"$(join(keys, '.'))\" on line $(state.line).")
+            else # attempt to overwrite a table
+                error("Key \"$k\" already defined in \"$(join(keys, '.'))\" on line $(state.line).")
             end
         else
             H[k] = (UTF8String => Any)[]
@@ -216,79 +119,125 @@ function section (state::ParserState)
         end
     end
     endline!(state)
-    state.stack = (Union(Dict,Array))[H]
+    state.cur_tbl = H
     seek_key
 end
 
-end_key =Set('\n','\r','=')
+
+
+const tbar = Regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]\]", Base.PCRE.ANCHORED)
+
+function tablearray (state::ParserState)
+    m = match(tbar, state.txt, state.index)
+    if m == nothing
+        error("Badly formed table array name.")
+    end
+    state.index += m.match.endof
+    ks = strip(m.captures[1])
+
+    @debug ("Table array: $ks")
+
+    if ks == ""
+        error("Table array name can't be empty")
+    end
+
+    keys = map(strip, split(ks, "."))
+    namepieces = String[]
+    H = state.result
+
+    for (i, k) in enumerate(keys)
+        if k == ""
+            error("Empty key name is not allowed in $k on line $(state.line)")
+        end
+
+        if haskey(H, k)
+            if i < length(keys)
+                @assert(isa(H[k], Union(Array{Dict{UTF8String, Any}, 1}, Dict{UTF8String, Any})),
+                        "Attempt to overwrite key $(join(keys[1:i], '.')) on line $(state.line).")
+                if isa(H[k], Dict)
+                    H = H[k]
+                else # H[k] is an array
+                    H = last(H[k])
+                end
+            else
+                @assert(isa(H[k], Array{Dict{UTF8String, Any}, 1}),
+                        "Attempt to overwrite value with array on line $(state.line).")
+                push!(H[k], (UTF8String => Any)[])
+                H = last(H[k])
+                break
+            end
+        else
+            if i < length(keys)
+                H[k] = (UTF8String => Any)[]
+                H = H[k]
+            else # we're done
+                H[k] = [(UTF8String=>Any)[]]
+                H = last(H[k])
+                break
+            end
+        end
+    end
+    endline!(state)
+    state.cur_tbl = H
+    seek_key
+end
+
+const end_key =Regex("([^\n\r=]*)([\n\r=])", Base.PCRE.ANCHORED)
 
 function key (state)
-    @debug ("key\n")
-    i1 = state.index
-    c = nextchar!(state)
-    while !has(end_key, c)
-        c = nextchar!(state)
+    @debug ("key : ")
+    m = match(end_key, state.txt, state.index)
+    state.index += m.match.endof
+
+    if m.captures[2] != "="
+        error("New lines are forbidden in key names. On line $(state.line).")
     end
 
-    if c != '='
-        throw ("New lines are forbidden in key names. On line $(state.line).")
-    end
+    k = strip(m.captures[1])
 
-    k = state.txt[i1:state.index-2]
-    @debug "$k|\n"
-    if k == nothing
-        throw ("Badly formed key.")
-    end
-    
-
-    trim = r"(.*[^ \t])[ \t]*$"
-    k = match( trim, k).captures[1]
     if k == ""
-        throw ("Key name can't be empty")
+        error("Key name can't be empty")
     end
 
-    @debug ("Key: $k\n")
-    if has(last(state.stack), k)
-        throw ("Attempt to redefine key \"$k\" on line $(state.line)")
+    @debug "  - $k"
+
+    if haskey(state.cur_tbl, k)
+        error("Attempt to redefine key \"$k\" on line $(state.line)")
     end
-    last(state.stack)[k] = value(state)
+
+    state.cur_tbl[k] = value(state)
     endline!(state)
     seek_key
 end
 
-date_pattern = r"(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)Z"
-
 function value (state)
-    @debug ("Value\n")
+    @debug ("Value:")
+    @debug state.txt[state.index:end]
     c = next_non_space!(state)
     if c == :eof || endlineP(char,state)
-        throw ("Empty value on line $(state.line - 1)")
+        error("Empty value on line $(state.line - 1)")
     end
 
     if c == '"'
         return string_value(state)
     elseif c == '['
         return array_value(state)
-    elseif has(state.options, :tuple) && c == '('
-        return tuple_value(state)
     elseif idem("true", state.txt, state.index - 1)
         state.index += 3
-        @debug ("TRUE\n")
+        @debug ("  - TRUE")
         return true
     elseif idem("false", state.txt, state.index - 1)
         state.index += 4
-        @debug ("FALSE\n")
+        @debug ("  - FALSE")
         return false
-    elseif idem("0000-00-00T00:00:00Z", state.txt, state.index - 1)
-        d = match(date_pattern, state.txt, state.index - 1)
-        d = Calendar.ymd_hms(map(parse_int, d.captures)...,"UTC")
+    elseif (d = match(date_pattern, state.txt, state.index - 1); d != nothing)
         state.index += 19
-        return Date(d)
+        return ymd_hms(map(parseint, d.captures)...,"UTC")
     elseif c == '-' || '0' <= c <= '9'
         state.index -= 1
         return numeric_value(state)
-    else 
-        throw ("Invalid value on line $(state.line)")
+    else
+        error("Invalid value on line $(state.line)")
     end
 end
 
@@ -296,99 +245,51 @@ valid_escape = [
     '0'  => '\0',
     '"'  => '"',
     '\\' => '\\',
+    '/' => '/',
+    'b'  => '\b',
+    'f'  => '\f',
     'n'  => '\n',
     'r'  => '\r',
     't'  => '\t',
 ]
 
-unescape (chr::Char) = has(valid_escape, chr) ? valid_escape[chr] : :invalid
+unescape (chr::Char) = get(valid_escape, chr, :invalid)
 
 function string_value (state::ParserState)
-    if has(state.options,:tripleQuotes) && state.txt[state.index] == '"' && state.txt[state.index + 1] == '"'
-        return long_string_value(state)
-    end
     buf = (Char)[]
     string_chunk(state,buf)
-    if has(state.options,:concatStrings)
-        while next_non_space!(state) == '+'
-            @debug ("More String")
-            if next_non_comment!(state) == '"'
-                string_chunk(state,buf)
-            else
-                throw ("String chunk expected on line $(state.line).")
-            end
-        end
-        state.index -= 1
-    end
-
-
     Base.utf8(CharString(buf))
 end
 
+const str_pattern = Regex("", Base.PCRE.ANCHORED)
 function string_chunk (state::ParserState,buf::Array{Char,1})
     @debug ("+++ Start String Chunk\n")
     while (chr = nextchar!(state)) != '"'
         if chr == :eof
-            throw ("Unexpected end of file in a string.")
+            error("Unexpected end of file in a string.")
         end
-        while endlineP(chr, state)
-            if has(state.options, :splitString)
-                chr = nextchar!(state)
-            else
-                throw ("Unexpected end of file/line in a string.")
-            end
+        if endlineP(chr, state)
+            error("Unexpected end of file/line in a string.")
         end
         if chr == '\\'
             chr = nextchar!(state)
-            if chr == 'x'
-                chr = parse_int(string([nextchar!(state),nextchar!(state)]...))
+            if chr == 'u'
+                num = (nextchar!(state),nextchar!(state),nextchar!(state),nextchar!(state))
+                chr = parseint(string(num...), 16)
             else
                 chr = unescape(chr)
                 if chr == :invalid
-                    throw ("Invalid escape sequence in string.")
+                    error("Invalid escape sequence in string.")
                 end
             end
         end
-        if chr == '\0' 
+        if chr == '\0'
             #WASDIWIDOU?
         end
         push!(buf,chr)
     end
-    @debug ("*** End String Chunk\n")
+    @debug ("*** End String Chunk")
 end
-
-
-function long_string_value (state::ParserState)
-    state.index += 2 # skip the remaining quotes.
-    char = next_non_space!(state)
-    if !endlineP(char,state)
-        throw  ("Unexpected character \"$char\"on line $(state.line - 1).\n"
-             * "A multi-line string starts on the line following the three quotes.")
-    end
-    buf = (Char)[]
-    while (char = nextchar!(state); 
-    !(endlineP(char,state)
-    && state.txt[state.index] == '"' 
-    && state.txt[state.index + 1] == '"'
-    && state.txt[state.index + 2] == '"'))
-        push!(buf, char)
-        if char == '\r' && state.txt[state.index - 1] == '\n' # handle CRLF.
-            push!(buf,'\n') 
-        end
-    end
-    state.index += 3 # skip the three quotes
-    Base.utf8(CharString(buf))
-end
-
-
-    #     fl = m.match
-    #     state.index += length(fl.data) - 1
-    #     return parse_float(Float64, fl)
-    # elseif (m = match(r"-?\d+", state.txt, state.index - 1)) != nothing
-    #     i = m.match
-    #     state.index += length(i.data) - 1
-    #     return parse_int(Int64, i)
-
 
 function numeric_value (state::ParserState)
     flt = false
@@ -399,83 +300,57 @@ function numeric_value (state::ParserState)
     end
     local c
     while (c=nextchar!(state); c!=:eof && '0'<=c<='9')
-        @debug ("NumVAl $c\n")
+        @debug ("NumVAl $c")
         push!(acc,c)
     end
-    
+
     if c != '.'
         state.index -= c==:eof ? 0 : 1
-        return parse_int(Int64, string(acc...))
+        return parseint(Int64, string(acc...))
     end
-    
+
     push!(acc,'.')
     while (c=nextchar!(state);  c!=:eof && '0'<=c<='9')
         push!(acc,c)
     end
     state.index -= c==:eof ? 0 : 1
     if last(acc) == '.'
-        throw ("Badly formed number on line $(state.line).")
+        error("Badly formed number on line $(state.line).")
     end
-    return parse_float(Float64, string(acc...))
+    return parsefloat(Float64, string(acc...))
 end
 
 arlv = 0
 
 function array_value(state)
     global arlv
-    arlv +=1
-    @debug "Array level $arlv\n"
+    @debug "Array level $(arlv += 1)"
     ary = {}
     local typ = Any
     while next_non_comment!(state) != ']'
+        @debug ("array_value", state.index)
         state.index -= 1
         val = value(state)
         if length(ary) == 0
             typ = typeof(val)
-            if !has(state.options, :strictArray)
-                typ = typ <: Array ? Array : typ
-            end
+            typ = typ <: Array ? Array : typ
             ary = (typ)[]
         end
         if isa(val, typ)
-            @debug "++++++++++ $ary  $val  $typ\n"
             push!(ary, val)
         else
-            throw ("Bad type in Array on line $(state.line).")
+            error("Bad type in Array on line $(state.line).")
         end
         # handle the coma:
-        c = next_non_comment!(state) 
+        c = next_non_comment!(state)
         if c == ']'
             break
         elseif c != ','
-            throw ("Syntax error in array. Coma expected on line $(state.line).")
+            error("Syntax error in array. Coma expected on line $(state.line).")
         end
     end
-    @debug "// Array level $arlv\n"
-    arlv -=1
+    @debug "// Array level $(arlv -= 1)"
     return ary
-end
-
-function tuple_value(state)
-    ary = {}
-    if next_non_comment!(state) == ')'
-        return return tuple(ary...)
-    end
-    state.index -= 1
-
-    while next_non_comment!(state) != ')'
-        state.index -= 1
-        val = value(state)
-        push!(ary, val)
-        # handle the coma:
-        c = next_non_comment!(state) 
-        if c == ')'
-            break
-        elseif c != ','
-            throw ("Syntax error in tuple. Coma expected on line $(state.line).")
-        end
-    end
-    return tuple(ary...)
 end
 
 end ## module TOML
