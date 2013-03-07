@@ -430,9 +430,11 @@ function array_value(state)
     while next_non_comment!(state) != ']'
         state.index -= 1
         val = value(state)
-        if has(state.options, :strictArray) && length(ary) == 0
+        if length(ary) == 0
             typ = typeof(val)
-            typ = typ <: Array ? Array : typ
+            if !has(state.options, :strictArray)
+                typ = typ <: Array ? Array : typ
+            end
             ary = (typ)[]
         end
         if isa(val, typ)
