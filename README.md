@@ -1,9 +1,9 @@
-## TOML.jl: A [TOML v0.2.0](https://github.com/mojombo/toml) parser for [Julia](julialang.org).
+## TOML.jl: A [TOML v0.2.0](https://github.com/mojombo/toml) parser for [Julia](https://github.com/JuliaLang/julia).
 
 ```Julia
 julia> require("TOML")
 
-julia> TOML.parse(open("test.toml"))
+julia> TOML.parse(readall("etc/example.toml"))
 [
   "clients"=>[
     "data"=>{{"gamma", "delta"}, {1, 2}},

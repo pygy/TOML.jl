@@ -33,9 +33,9 @@ function display_error(er)
     end
 end
 
-function display_success()
+function display_success(msg)
     Base.with_output_color(:green, STDOUT) do io
-        println(io, "OK")
+        println(io, msg)
     end
 end
 
@@ -50,13 +50,13 @@ function test()
                     tml = TOML.parse(tml)
                     jsn = jsn2data(JSON.parse(readall(jsn)))
                     if jsn == tml
-                        display_success()
+                        display_success("Ok")
                     else
                         display_error("unexpected result.\nTOML:\n$tml\n\nJSON:\n$jsn\n")
                         global exitstatus = 1
                     end
                 catch err
-                    if isa(err, ErrorException)
+                    if isa(err, TOML.TOMLError)
                         err = err.msg
                     else
                         err = repr(err)
@@ -69,14 +69,17 @@ function test()
     end
 
     for t in invalid
-        print("Invalid $t: ")
+        println("Invalid $t:")
         open(string(testdir, "/invalid/", t)) do tml
             try
                 tml = TOML.parse(tml)
                 display_error("should have failed but didn't.")
                 global exitstatus = 1
-            catch
-                display_success()
+            catch err
+                if !isa(err, TOML.TOMLError)
+                    rethrow(err)
+                end
+                display_success("  " * repr(err))
             end
         end
     end

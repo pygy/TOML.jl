@@ -1,3 +1,10 @@
+DBG = false
+
+macro debug (msg)
+    if DBG
+        :(println ($msg))
+    end
+end
 
 function idem(needle::String, haystack::String, idx)
     for c1 in needle
@@ -57,7 +64,7 @@ function endline! (state::ParserState)
         end
         return
     else
-        error("Illegal character \'$c\' on line $(state.line).")
+        _error("Illegal character \'$c\'", state)
     end
 end
 
@@ -80,3 +87,12 @@ function next_non_comment! (state::ParserState)
         end
     end
 end
+
+immutable TOMLError
+    msg
+end
+
+Base.show(io::IO, e::TOMLError) = print(io, repr(e))
+Base.repr(e::TOMLError) = "TOMLError: $(e.msg)"
+
+_error(msg, state) = throw(TOMLError("$msg on line $(state.line)."))
