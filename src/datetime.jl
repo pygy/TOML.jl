@@ -2,12 +2,12 @@
 const date_pattern = Regex("(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})Z", Base.PCRE.ANCHORED)
 
 immutable DateTime
-    year
-    month
-    date
-    hour
-    minute
-    second
+    year::Int
+    month::Int
+    date::Int
+    hour::Int
+    minute::Int
+    second::Int
 end
 
 function ymd_hms(args...)

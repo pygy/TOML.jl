@@ -31,6 +31,23 @@ The input must be convertible to UTF-8. Arbitrary byte strings are not supported
 
 The parser is strict, and will raise an error on unexpected input.
 
+### DateTime objects:
+
+To keep the dependencies low (the Calendar package is very slow to
+load), and waiting for `Timestamp`s in the Base library, TOML `DateTime`s are
+currently converted to `TOML.DateTime` objects.
+
+```Julia
+immutable DateTime
+    year::Int
+    month::Int
+    date::Int
+    hour::Int
+    minute::Int
+    second::Int
+end
+```
+
 ###Licenses...
 
 ...should be written for people, to read, and only incidentlly for lawyers, to prosecute.
