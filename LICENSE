@@ -1,12 +1,12 @@
                        The Romantic WTF public license.
                        --------------------------------
                        a.k.a. version "<3" or simply v3
-                       
+
                Dear user,
 
                "TOML.jl", a TOML parser for Julia,
-                  
-                                                \ 
+
+                                                \
                                                  '.,__
                                               \  /
                                                '/,__
@@ -14,15 +14,15 @@
                                               /
                                              /
                           has been          / released
-                     ~ ~ ~ ~ ~ ~ ~ ~       ~ ~ ~ ~ ~ ~ ~ ~ 
+                     ~ ~ ~ ~ ~ ~ ~ ~       ~ ~ ~ ~ ~ ~ ~ ~
                    under  the  Romantic   WTF Public License.
-                  ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~`,´ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ 
+                  ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~`,´ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
                   I hereby grant you an irrevocable license to
                    ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
                      do what the gentle caress you want to
-                          ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~  
+                          ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
                               with   this   lovely
-                                 ~ ~ ~ ~ ~ ~ ~ ~ 
+                                 ~ ~ ~ ~ ~ ~ ~ ~
                                   / library.
                                  /  ~ ~ ~ ~
                                 /    Love,
@@ -31,12 +31,17 @@
                            #####
                            ###
                            #
-    
+
                -- Pygy
-    
-    
-               P.S.: Even though I poured my heart into this work, 
-                     I _cannot_ provide any warranty regarding 
-                     its fitness for _any_ purpose. You
-                     acknowledge that I will not be held liable
-                     for any damage its use could incur.
+
+
+               P.S.: Even though I poured my heart into this work,
+                 I _cannot_ provide any warranty regarding its
+                 fitness for _any_ purpose. You acknowledge that I
+                 will not be held liable for any damage its use
+                 could incur.
+
+               P.P.S. : to appease lawyers and / or killjoys (;-)),
+                 and to atone for my sins against serious business,
+                 the official version of TOML.jl is also MIT licensed.
+                 See the ATONEMENT file, if present in your copy.

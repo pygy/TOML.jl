@@ -30,3 +30,9 @@ julia> TOML.parse(readall("etc/example.toml"))
 The input must be convertible to UTF-8. Arbitrary byte strings are not supported, per spec.
 
 The parser is strict, and will raise an error on unexpected input.
+
+###Licenses...
+
+...should be written for people, to read, and only incidentlly for lawyers, to prosecute.
+
+See LICENSE and ATONEMENT, respectively :-)
