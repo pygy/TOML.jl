@@ -1,4 +1,12 @@
-## TOML.jl: A [TOML v0.2.0](https://github.com/mojombo/toml) parser for [Julia](https://github.com/JuliaLang/julia).
+## [TOML.jl][tomljl]
+
+A [TOML v0.2.0][toml] parser for [Julia][julia].
+
+[tomljl]: https://github.com/pygy/TOML.jl
+[toml]: https://github.com/mojombo/toml
+[julia]: https://julialang.org
+
+### Usage:
 
 ```Julia
 julia> require("TOML")
@@ -29,12 +37,13 @@ julia> TOML.parse(readall("etc/example.toml"))
 
 The input must be convertible to UTF-8. Arbitrary byte strings are not supported, per spec.
 
-The parser is strict, and will raise an error on unexpected input.
+The parser is strict, and will throw a `TOMLError` on unexpected input.
+
 
 ### DateTime objects:
 
 To keep the dependencies low (the Calendar package is very slow to
-load), and waiting for `Timestamp`s in the Base library, TOML `DateTime`s are
+load), and waiting for the implemetation `Timestamp`s in the Julia Base library, TOML `DateTime`s are
 currently converted to `TOML.DateTime` objects.
 
 ```Julia
@@ -48,7 +57,7 @@ immutable DateTime
 end
 ```
 
-###Licenses...
+### Licenses...
 
 ...should be written for people, to read, and only incidentlly for lawyers, to prosecute.
 
