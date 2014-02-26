@@ -11,22 +11,17 @@ type ParserState
     line::Integer
     result::Dict{UTF8String,Any}
     cur_tbl::Dict{UTF8String,Any}
-    tblarystack::Array
-    BOM::Bool
 
     function ParserState(txt::UTF8String)
         BOM = length(txt) > 0 && txt[1] == '\ufeff'  ? true : false
         maintbl = (UTF8String => Any)[]
-        state = new(
+        new(
             txt,         # subject
             BOM ? 4 : 1, # index. Strip the BOM if present.
             1,           # line
             maintbl,     # result
-            maintbl,     # cur_tbl
-            {},          # table array stack
-            BOM
+            maintbl      # cur_tbl
         )
-        state
     end
 
     function ParserState(txt::String)
@@ -102,7 +97,6 @@ function table (state::ParserState)
     end
     endline!(state)
     state.cur_tbl = H
-    seek_key
 end
 
 
@@ -156,7 +150,6 @@ function tablearray (state::ParserState)
     end
     endline!(state)
     state.cur_tbl = H
-    seek_key
 end
 
 
@@ -177,7 +170,6 @@ function key (state)
     end
     state.cur_tbl[k] = value(state)
     endline!(state)
-    seek_key
 end
 
 
