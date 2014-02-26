@@ -59,10 +59,10 @@ function parse(txt)
 end
 
 
-const tabl = Regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]", Base.PCRE.ANCHORED)
+const table_pattern = Regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]", Base.PCRE.ANCHORED)
 
 function table (state::ParserState)
-    m = match(tabl, state.txt, state.index)
+    m = match(table_pattern, state.txt, state.index)
     if m == nothing
         _error("Badly formed table name", state)
     end
@@ -76,34 +76,34 @@ function table (state::ParserState)
     end
     keys = split(ks, ".")
     keys = map!(strip, keys, {})
-    H = state.result
+    tbl = state.result
     for (i, k) in enumerate(keys)
         if k == ""
             _error("Empty key name is not allowed in $k", state)
         end
-        if haskey(H,k)
-            if isa(H[k],Dict) && (
+        if haskey(tbl,k)
+            if isa(tbl[k],Dict) && (
                 i != length(keys) ||
-                any(values(H[k])) do v ;; isa(v, Dict) end # a sub-dictionary has already been defined.
+                any(values(tbl[k])) do v ;; isa(v, Dict) end # a sub-dictionary has already been defined.
             )
-                H = H[k]
+                tbl = tbl[k]
             else 
                 _error("Key \"$k\" already defined in \"$(join(keys, '.'))\"", state)
             end
         else
-            H[k] = (UTF8String => Any)[]
-            H = H[k]
+            tbl[k] = (UTF8String => Any)[]
+            tbl = tbl[k]
         end
     end
     endline!(state)
-    state.cur_tbl = H
+    state.cur_tbl = tbl
 end
 
 
-const tbar = Regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]\]", Base.PCRE.ANCHORED)
+const table_array_pattern = Regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]\]", Base.PCRE.ANCHORED)
 
 function tablearray (state::ParserState)
-    m = match(tbar, state.txt, state.index)
+    m = match(table_array_pattern, state.txt, state.index)
     if m == nothing
         _error("Badly formed table array name", state)
     end
@@ -114,49 +114,52 @@ function tablearray (state::ParserState)
     end
     keys = map(strip, split(ks, "."))
     namepieces = String[]
-    H = state.result
+    tbl = state.result
     for (i, k) in enumerate(keys)
         if k == ""
             _error("Empty key name is not allowed in $k", state)
         end
-        if haskey(H, k)
+        if haskey(tbl, k)
             if i < length(keys)
-                if !isa(H[k], Union(Array{Dict{UTF8String, Any}, 1}, Dict{UTF8String, Any}))
+                if !isa(tbl[k], Union(Array{Dict{UTF8String, Any}, 1}, Dict{UTF8String, Any}))
                     _error("Attempt to overwrite key $(join(keys[1:i], '.'))", state)
                 end
-                if isa(H[k], Dict)
-                    H = H[k]
-                else # H[k] is an array
-                    H = last(H[k])
+                if isa(tbl[k], Dict)
+                    tbl = tbl[k]
+                else # tbl[k] is an array
+                    tbl = last(tbl[k])
                 end
             else
-                if !isa(H[k], Array{Dict{UTF8String, Any}, 1})
+                if !isa(tbl[k], Array{Dict{UTF8String, Any}, 1})
                     _error("Attempt to overwrite value with array", state)
                 end
-                push!(H[k], (UTF8String => Any)[])
-                H = last(H[k])
+                push!(tbl[k], (UTF8String => Any)[])
+                tbl = last(tbl[k])
                 break
             end
         else
             if i < length(keys)
-                H[k] = (UTF8String => Any)[]
-                H = H[k]
+                tbl[k] = (UTF8String => Any)[]
+                tbl = tbl[k]
             else # we're done
-                H[k] = [(UTF8String=>Any)[]]
-                H = last(H[k])
+                tbl[k] = [(UTF8String=>Any)[]]
+                tbl = last(tbl[k])
                 break
             end
         end
     end
     endline!(state)
-    state.cur_tbl = H
+    state.cur_tbl = tbl
 end
 
 
-const end_key =Regex("([^\n\r=]*)([\n\r=])", Base.PCRE.ANCHORED)
+const key_pattern =Regex("([^\n\r=]*)([\n\r=])", Base.PCRE.ANCHORED)
 
 function key (state)
-    m = match(end_key, state.txt, state.index)
+    m = match(key_pattern, state.txt, state.index)
+    if m == nothing
+        _error("Badly formed table key name", state)
+    end
     state.index += m.match.endof
     if m.captures[2] != "="
         _error("New lines are forbidden in key names", state)
