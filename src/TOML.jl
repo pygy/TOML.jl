@@ -11,6 +11,7 @@ type ParserState
     line::Integer
     result::Dict{UTF8String,Any}
     cur_tbl::Dict{UTF8String,Any}
+    tbl_names::Set{UTF8String}
 
     function ParserState(txt::UTF8String)
         BOM = length(txt) > 0 && txt[1] == '\ufeff'  ? true : false
@@ -20,7 +21,8 @@ type ParserState
             BOM ? 4 : 1, # index. Strip the BOM if present.
             1,           # line
             maintbl,     # result
-            maintbl      # cur_tbl
+            maintbl,     # cur_tbl
+            Set{UTF8String}()
         )
     end
 
@@ -84,7 +86,7 @@ function table (state::ParserState)
         if haskey(tbl,k)
             if isa(tbl[k],Dict) && (
                 i != length(keys) ||
-                any(values(tbl[k])) do v ;; isa(v, Dict) end # a sub-dictionary has already been defined.
+                !(join(keys, ".") in state.tbl_names)
             )
                 tbl = tbl[k]
             else 
@@ -95,6 +97,7 @@ function table (state::ParserState)
             tbl = tbl[k]
         end
     end
+    push!(state.tbl_names, join(keys, "."))
     endline!(state)
     state.cur_tbl = tbl
 end
