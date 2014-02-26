@@ -213,8 +213,6 @@ valid_escape = [
     't'  => '\t',
 ]
 
-unescape (chr::Char) = get(valid_escape, chr, :invalid)
-
 function string_value (state::ParserState)
     buf = (Char)[]
     while (chr = nextchar!(state)) != '"'
@@ -235,9 +233,9 @@ function string_value (state::ParserState)
                 end
             else
                 unesc = chr
-                chr = unescape(chr)
+                chr = get(valid_escape, chr, :invalid)
                 if chr == :invalid
-                    _error("Invalid escape sequence '\\$unesc' in string statrting", state)
+                    _error("Invalid escape sequence '\\$unesc' in string", state)
                 end
             end
         end
