@@ -39,13 +39,12 @@ function next_non_space! (state::ParserState)
     end
 end
 
-function endlineP (c, state::ParserState)
+function endlineP (c, state::ParserState) # Where 'P' really is a '?'.
     if c == '\r' && state.txt[state.index + 1] == '\n'
         nextchar!(state)
     end
     if c == '\r' || c == '\n'
         state.line += 1
-        @debug ("======= End Line")
         return true
     else
         return false
@@ -60,7 +59,6 @@ function endline! (state::ParserState)
         return
     elseif c == '#'
         while (c = nextchar!(state); !endlineP(c, state) && c != :eof)
-            true
         end
         return
     else

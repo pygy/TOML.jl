@@ -2,6 +2,7 @@ module TOML
 
 VERSION = v"0.1.0"
 
+
 include("datetime.jl")
 
 
@@ -9,32 +10,30 @@ type ParserState
     txt::UTF8String
     index::Integer
     line::Integer
-    result::Dict{UTF8String,Any}
-    cur_tbl::Dict{UTF8String,Any}
+    result::Dict{UTF8String, Any}
+    cur_tbl::Dict{UTF8String, Any}
     tbl_names::Set{UTF8String}
 
     function ParserState(txt::UTF8String)
         BOM = length(txt) > 0 && txt[1] == '\ufeff'  ? true : false
         maintbl = (UTF8String => Any)[]
         new(
-            txt,         # subject
-            BOM ? 4 : 1, # index. Strip the BOM if present.
-            1,           # line
-            maintbl,     # result
-            maintbl,     # cur_tbl
-            Set{UTF8String}()
+            txt,              # subject
+            BOM ? 4 : 1,      # index. Strip the BOM if present.
+            1,                # line
+            maintbl,          # result
+            maintbl,          # cur_tbl
+            Set{UTF8String}() # tbl_names
         )
     end
 
     function ParserState(txt::String)
-        # try
-            txt = ParserState(Base.utf8(txt))
-        # catch
-        #     error("TOML.parse(): Input conversion to UTF-8 failed.")
-        # end
+        try
+            ParserState(Base.utf8(txt))
+        catch
+            throw(TOMLError("No method utf8($typeof(txt))"))
+        end
     end
-
-    ParserState(file::IOStream) = ParserState(readall(file))
 end
 
 
@@ -50,9 +49,9 @@ function parse(txt)
         elseif char != '['
             state.index -= 1
             key(state)
-        elseif state.txt[state.index] == '['
+        elseif getchar(state) == '['
             state.index += 1
-            tablearray(state)
+            table_array(state)
         else
             table(state)
         end
@@ -66,7 +65,7 @@ const table_pattern = Regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]", Base.PCRE.ANCHORED
 function table (state::ParserState)
     m = match(table_pattern, state.txt, state.index)
     if m == nothing
-        _error("Badly formed table name", state)
+        _error("Malformed table name", state)
     end
     state.index += m.match.endof
     ks = strip(m.captures[1])
@@ -77,14 +76,13 @@ function table (state::ParserState)
         _error("Opening brackets '[' are forbidden in table names", state)
     end
     keys = split(ks, ".")
-    keys = map!(strip, keys, {})
     tbl = state.result
     for (i, k) in enumerate(keys)
         if k == ""
-            _error("Empty key name is not allowed in $k", state)
+            _error("Empty key name is not allowed in $ks", state)
         end
-        if haskey(tbl,k)
-            if isa(tbl[k],Dict) && (
+        if haskey(tbl, k)
+            if isa(tbl[k], Dict) && (
                 i != length(keys) ||
                 !(join(keys, ".") in state.tbl_names)
             )
@@ -105,22 +103,21 @@ end
 
 const table_array_pattern = Regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]\]", Base.PCRE.ANCHORED)
 
-function tablearray (state::ParserState)
+function table_array (state::ParserState)
     m = match(table_array_pattern, state.txt, state.index)
     if m == nothing
-        _error("Badly formed table array name", state)
+        _error("Malformed table array name", state)
     end
     state.index += m.match.endof
     ks = strip(m.captures[1])
     if ks == ""
         _error("Table array name can't be empty", state)
     end
-    keys = map(strip, split(ks, "."))
-    namepieces = String[]
+    keys = split(ks, ".")
     tbl = state.result
     for (i, k) in enumerate(keys)
         if k == ""
-            _error("Empty key name is not allowed in $k", state)
+            _error("Empty key name is not allowed in $ks", state)
         end
         if haskey(tbl, k)
             if i < length(keys)
@@ -156,7 +153,7 @@ function tablearray (state::ParserState)
 end
 
 
-const key_pattern =Regex("([^\n\r=]*)([\n\r=])", Base.PCRE.ANCHORED)
+const key_pattern = Regex("([^\n\r=]*)([\n\r=])", Base.PCRE.ANCHORED)
 
 function key (state)
     m = match(key_pattern, state.txt, state.index)
@@ -181,8 +178,7 @@ end
 
 function value (state)
     c = next_non_space!(state)
-    if c == :eof || endlineP(char,state)
-        state.line -= 1
+    if c == :eof || c == '\r' || c == '\n'
         _error("Empty value", state)
     end
     if c == '"'
@@ -197,7 +193,7 @@ function value (state)
         return false
     elseif (d = match(date_pattern, state.txt, state.index - 1); d != nothing)
         state.index += 19
-        return ymd_hms(map(parseint, d.captures)...,"UTC")
+        return ymd_hms(map(parseint, d.captures)..., "UTC")
     elseif c == '-' || '0' <= c <= '9'
         state.index -= 1
         return numeric_value(state)
@@ -225,13 +221,13 @@ function string_value (state::ParserState)
         if chr == :eof
             _error("Unexpected end of file in a string", state)
         end
-        if endlineP(chr, state)
+        if chr == '\r' || chr == '\n'
             _error("Unexpected end of line in a string", state)
         end
         if chr == '\\'
             chr = nextchar!(state)
             if chr == 'u'
-                num = (nextchar!(state),nextchar!(state),nextchar!(state),nextchar!(state))
+                num = (nextchar!(state), nextchar!(state), nextchar!(state), nextchar!(state))
                 try
                     chr = parseint(string(num...), 16)
                 catch
@@ -245,7 +241,7 @@ function string_value (state::ParserState)
                 end
             end
         end
-        push!(buf,chr)
+        push!(buf, chr)
     end
     Base.utf8(CharString(buf))
 end
@@ -256,32 +252,36 @@ function numeric_value (state::ParserState)
     NumTyp = Int64
     acc = (Char)[]
     if getchar(state) == '-'
-        push!(acc,'-')
+        push!(acc, '-')
         nextchar!(state)
     end
     local c
     while (c=nextchar!(state); c!=:eof && '0'<=c<='9')
-        push!(acc,c)
+        push!(acc, c)
     end
     if c == '.'
-        push!(acc,'.')
+        push!(acc, '.')
         while (c=nextchar!(state);  c!=:eof && '0'<=c<='9')
-            push!(acc,c)
+            push!(acc, c)
         end
         if last(acc) == '.'
-            _error("Badly formed number", state)
+            _error("Malformed number", state)
         end
         parsenum, NumTyp = parsefloat, Float64
     end
     state.index -= c==:eof ? 0 : 1
-    parsenum(NumTyp, string(acc...))
+    try
+        parsenum(NumTyp, string(acc...))
+    catch
+        _error("Couldn't parse number", state)
+    end
 end
 
 
 function array_value(state)
     ary = {}
     local typ = Any
-    while next_non_comment!(state) != ']'
+    while next_non_comment!(state) != ']' # covers empty arrays and trailing comas
         state.index -= 1
         val = value(state)
         if length(ary) == 0
@@ -292,7 +292,7 @@ function array_value(state)
         if isa(val, typ)
             push!(ary, val)
         else
-            _error("Bad type in Array", state)
+            _error("Mixed types in array: expected $typ, found $(typeof(val))", state)
         end
         c = next_non_comment!(state)
         if c == ']'

@@ -47,7 +47,7 @@ function test()
             open(string(testdir, "/valid/", t, ".toml")) do tml
                 open(string(testdir, "/valid/", t, ".json")) do jsn
                 try
-                    tml = TOML.parse(tml)
+                    tml = TOML.parse(readall(tml))
                     jsn = jsn2data(JSON.parse(readall(jsn)))
                     if jsn == tml
                         display_success("Ok")
@@ -56,12 +56,10 @@ function test()
                         global exitstatus = 1
                     end
                 catch err
-                    if isa(err, TOML.TOMLError)
-                        err = err.msg
-                    else
-                        err = repr(err)
+                    if !isa(err, TOML.TOMLError)
+                        rethrow(err)
                     end
-                    display_error("couldn't be parsed.\n" * err)
+                    display_error("couldn't be parsed.\n" * repr(err))
                     global exitstatus = 1
                 end
             end
@@ -72,7 +70,7 @@ function test()
         println("Invalid $t:")
         open(string(testdir, "/invalid/", t)) do tml
             try
-                tml = TOML.parse(tml)
+                tml = TOML.parse(readall(tml))
                 display_error("should have failed but didn't.")
                 global exitstatus = 1
             catch err
