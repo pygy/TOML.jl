@@ -46,29 +46,21 @@ include("util.jl")
 
 function parse(txt)
     state = ParserState(txt)
-    func = seek_key(state)
-    # trampoline
-    while isa(func, Function)
-        func = func(state)
+    while true
+        char = next_non_comment!(state)
+        if char == :eof
+            break
+        elseif char != '['
+            state.index -= 1
+            key(state)
+        elseif state.txt[state.index] == '['
+            state.index += 1
+            tablearray(state)
+        else
+            table(state)
+        end
     end
     return state.result
-end
-
-
-function seek_key (state::ParserState)
-    char = next_non_comment!(state)
-    if char == :eof
-        return :eof
-    end
-    if char != '['
-        state.index -= 1
-        key
-    elseif state.txt[state.index] == '['
-        state.index += 1
-        tablearray
-    else
-        table
-    end
 end
 
 
