@@ -14,7 +14,16 @@ type ParserState
     cur_tbl::Dict{UTF8String, Any}
     tbl_names::Set{UTF8String}
 
-    function ParserState(txt::UTF8String)
+    function ParserState{T<:Union(String, Array{Uint8, 1})}(txt::T)
+        if isa(txt, Union(ByteString, Array{Uint8, 1})) && !is_valid_utf8(txt)
+            throw(TOMLError("$T with invalid UTF-8 byte sequence."))
+        end
+        try
+            txt = convert(UTF8String, txt)
+        catch
+            throw(TOMLError("Couldn't convert $T to UTF8String " *
+                "(no method convert(Type{UTF8String}, $T))."))
+        end
         BOM = length(txt) > 0 && txt[1] == '\ufeff'  ? true : false
         maintbl = (UTF8String => Any)[]
         new(
@@ -26,21 +35,13 @@ type ParserState
             Set{UTF8String}() # tbl_names
         )
     end
-
-    function ParserState(txt::String)
-        try
-            ParserState(Base.utf8(txt))
-        catch
-            throw(TOMLError("No method utf8($typeof(txt))"))
-        end
-    end
 end
 
 
 include("util.jl")
 
 
-function parse(txt)
+function parse(txt::Union(String, Array{Uint8, 1}))
     state = ParserState(txt)
     while true
         char = next_non_comment!(state)
