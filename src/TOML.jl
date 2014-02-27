@@ -89,7 +89,7 @@ function table (state::ParserState)
             )
                 tbl = tbl[k]
             else 
-                _error("Key \"$k\" already defined in \"$(join(keys, '.'))\"", state)
+                _error("Key \"$k\" already defined", state)
             end
         else
             tbl[k] = (UTF8String => Any)[]
