@@ -63,4 +63,4 @@ end
 
 ...should be written for people, to read, and only incidentally for lawyers, to prosecute.
 
-See LICENSE and ATONEMENT, respectively :-)
+Thus, Romantic WTF and MIT, respectively.
