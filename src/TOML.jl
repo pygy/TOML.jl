@@ -159,7 +159,7 @@ const key_pattern = Regex("([^\n\r=]*)([\n\r=])", Base.PCRE.ANCHORED)
 function key (state)
     m = match(key_pattern, state.subject, state.index)
     if m == nothing
-        _error("Badly formed table key name", state)
+        _error("Malformed table key name", state)
     end
     state.index += m.match.endof
     if m.captures[2] != "="
@@ -180,7 +180,7 @@ end
 function value (state)
     c = next_non_space!(state)
     if c == :eof || c == '\r' || c == '\n'
-        _error("Empty value", state)
+        _error("Value expected", state)
     end
     if c == '"'
         return string_value(state)
@@ -220,7 +220,7 @@ function string_value (state::ParserState)
     buf = (Char)[]
     while (chr = nextchar!(state)) != '"'
         if chr == :eof
-            _error("Unexpected end of file in a string", state)
+            _error("Premature end of file in a string", state)
         end
         if chr == '\r' || chr == '\n'
             _error("Unexpected end of line in a string", state)
@@ -273,8 +273,8 @@ function numeric_value (state::ParserState)
     state.index -= c==:eof ? 0 : 1
     try
         parsenum(NumTyp, string(acc...))
-    catch
-        _error("Couldn't parse number", state)
+    catch err
+        _error("Couldn't parse number ($(repr(err)))", state)
     end
 end
 
