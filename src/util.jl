@@ -19,13 +19,13 @@ function idem(needle::String, haystack::String, idx)
     return true
 end
 
-getchar(state::ParserState) = state.txt[state.index]
+getchar(state::ParserState) = state.subject[state.index]
 
 function nextchar!(state::ParserState)
-    if done(state.txt, state.index)
+    if done(state.subject, state.index)
         return :eof
     end
-    (char, state.index) = next(state.txt, state.index)
+    (char, state.index) = next(state.subject, state.index)
     @debug ("nextchar: $char")
     char
 end
@@ -40,7 +40,7 @@ function next_non_space! (state::ParserState)
 end
 
 function endlineP (c, state::ParserState) # Where 'P' really is a '?'.
-    if c == '\r' && state.txt[state.index + 1] == '\n'
+    if c == '\r' && state.subject[state.index + 1] == '\n'
         nextchar!(state)
     end
     if c == '\r' || c == '\n'

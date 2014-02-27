@@ -7,27 +7,27 @@ include("datetime.jl")
 
 
 type ParserState
-    txt::UTF8String
+    subject::UTF8String
     index::Integer
     line::Integer
     result::Dict{UTF8String, Any}
     cur_tbl::Dict{UTF8String, Any}
     tbl_names::Set{UTF8String}
 
-    function ParserState{T<:Union(String, Array{Uint8, 1})}(txt::T)
-        if isa(txt, Union(ByteString, Array{Uint8, 1})) && !is_valid_utf8(txt)
+    function ParserState{T<:Union(String, Array{Uint8, 1})}(subject::T)
+        if isa(subject, Union(ByteString, Array{Uint8, 1})) && !is_valid_utf8(subject)
             throw(TOMLError("$T with invalid UTF-8 byte sequence."))
         end
         try
-            txt = convert(UTF8String, txt)
+            subject = convert(UTF8String, subject)
         catch
             throw(TOMLError("Couldn't convert $T to UTF8String " *
                 "(no method convert(Type{UTF8String}, $T))."))
         end
-        BOM = length(txt) > 0 && txt[1] == '\ufeff'  ? true : false
+        BOM = length(subject) > 0 && subject[1] == '\ufeff'  ? true : false
         maintbl = (UTF8String => Any)[]
         new(
-            txt,              # subject
+            subject,              # subject
             BOM ? 4 : 1,      # index. Strip the BOM if present.
             1,                # line
             maintbl,          # result
@@ -41,8 +41,8 @@ end
 include("util.jl")
 
 
-function parse(txt::Union(String, Array{Uint8, 1}))
-    state = ParserState(txt)
+function parse(subject::Union(String, Array{Uint8, 1}))
+    state = ParserState(subject)
     while true
         char = next_non_comment!(state)
         if char == :eof
@@ -64,7 +64,7 @@ end
 const table_pattern = Regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]", Base.PCRE.ANCHORED)
 
 function table (state::ParserState)
-    m = match(table_pattern, state.txt, state.index)
+    m = match(table_pattern, state.subject, state.index)
     if m == nothing
         _error("Malformed table name", state)
     end
@@ -105,7 +105,7 @@ end
 const table_array_pattern = Regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]\]", Base.PCRE.ANCHORED)
 
 function table_array (state::ParserState)
-    m = match(table_array_pattern, state.txt, state.index)
+    m = match(table_array_pattern, state.subject, state.index)
     if m == nothing
         _error("Malformed table array name", state)
     end
@@ -157,7 +157,7 @@ end
 const key_pattern = Regex("([^\n\r=]*)([\n\r=])", Base.PCRE.ANCHORED)
 
 function key (state)
-    m = match(key_pattern, state.txt, state.index)
+    m = match(key_pattern, state.subject, state.index)
     if m == nothing
         _error("Badly formed table key name", state)
     end
@@ -186,13 +186,13 @@ function value (state)
         return string_value(state)
     elseif c == '['
         return array_value(state)
-    elseif idem("true", state.txt, state.index - 1)
+    elseif idem("true", state.subject, state.index - 1)
         state.index += 3
         return true
-    elseif idem("false", state.txt, state.index - 1)
+    elseif idem("false", state.subject, state.index - 1)
         state.index += 4
         return false
-    elseif (d = match(date_pattern, state.txt, state.index - 1); d != nothing)
+    elseif (d = match(date_pattern, state.subject, state.index - 1); d != nothing)
         state.index += 19
         return ymd_hms(map(parseint, d.captures)..., "UTC")
     elseif c == '-' || '0' <= c <= '9'
