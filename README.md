@@ -35,7 +35,7 @@ julia> TOML.parse(readall("etc/example.toml"))
 ]
 ```
 
-The input must be convertible to UTF-8. Arbitrary byte strings are not supported, per spec.
+The input must be convertible to UTF-8. Byte sequences that represent an invalid UTF-8 string will be rejected, per spec.
 
 The TOML types are converted to their natural Julia counterparts (except datetimes, see below). Arrays are typed.
 
