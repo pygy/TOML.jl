@@ -27,7 +27,7 @@ type ParserState
         BOM = length(subject) > 0 && subject[1] == '\ufeff'  ? true : false
         maintbl = (UTF8String => Any)[]
         new(
-            subject,          # subject
+            subject,
             BOM ? 4 : 1,      # index. Strip the BOM if present.
             1,                # line
             maintbl,          # result
