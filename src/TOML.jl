@@ -42,22 +42,27 @@ include("util.jl")
 
 
 function parse(subject::Union(String, Array{Uint8, 1}))
-    state = ParserState(subject)
-    while true
-        char = next_non_comment!(state)
-        if char == :eof
-            break
-        elseif char != '['
-            state.index -= 1
-            key(state)
-        elseif getchar(state) == '['
-            state.index += 1
-            table_array(state)
-        else
-            table(state)
+    try
+        state = ParserState(subject)
+        while true
+            char = next_non_comment!(state)
+            if char == :eof
+                break
+            elseif char != '['
+                state.index -= 1
+                key(state)
+            elseif getchar(state) == '['
+                state.index += 1
+                table_array(state)
+            else
+                table(state)
+            end
         end
+        state.result
+    catch err
+        rethrow(err)
+        (isa(err, TOMLError) ? throw : rethrow)(err)
     end
-    return state.result
 end
 
 
@@ -252,9 +257,11 @@ function numeric_value (state::ParserState)
     parsenum = parseint
     NumTyp = Int64
     acc = (Char)[]
+    firstdigit = 1
     if getchar(state) == '-'
         push!(acc, '-')
         nextchar!(state)
+        firstdigit = 2
     end
     local c
     while (c=nextchar!(state); c!=:eof && '0'<=c<='9')
@@ -271,11 +278,19 @@ function numeric_value (state::ParserState)
         parsenum, NumTyp = parsefloat, Float64
     end
     state.index -= c==:eof ? 0 : 1
+
+    num = 0
     try
-        parsenum(NumTyp, string(acc...))
+        numrepr = string(acc...)
+        num = parsenum(NumTyp, numrepr)
+        # in Julia v0.2 `parseint()` doesn't detect overflows, but `parse()` does.
+        Base.VERSION < v"0.3-prerelease" &&
+            NumTyp == Int64 &&
+            Base.parse(numrepr)
     catch err
         _error("Couldn't parse number ($(repr(err)))", state)
     end
+    num
 end
 
 
