@@ -1,6 +1,6 @@
 module TOML
 
-VERSION = v"0.1.0"
+VERSION = v"0.1.2"
 
 
 include("datetime.jl")
@@ -60,7 +60,6 @@ function parse(subject::Union(String, Array{Uint8, 1}))
         end
         state.result
     catch err
-        rethrow(err)
         (isa(err, TOMLError) ? throw : rethrow)(err)
     end
 end
