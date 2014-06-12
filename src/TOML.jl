@@ -74,9 +74,6 @@ function table (state::ParserState)
     end
     state.index += m.match.endof
     ks = strip(m.captures[1])
-    if ks == ""
-        _error("Section name can't be empty", state)
-    end
     if contains(ks, "[")
         _error("Opening brackets '[' are forbidden in table names", state)
     end
@@ -106,7 +103,7 @@ function table (state::ParserState)
 end
 
 
-const table_array_pattern = Regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]\]", Base.PCRE.ANCHORED)
+const table_array_pattern = Regex("[ \t]*([^ \t\r\n]?[^\]\r\n]*)\]\]", Base.PCRE.ANCHORED)
 
 function table_array (state::ParserState)
     m = match(table_array_pattern, state.subject, state.index)
@@ -115,9 +112,6 @@ function table_array (state::ParserState)
     end
     state.index += m.match.endof
     ks = strip(m.captures[1])
-    if ks == ""
-        _error("Table array name can't be empty", state)
-    end
     keys = split(ks, ".")
     tbl = state.result
     for (i, k) in enumerate(keys)
@@ -163,7 +157,7 @@ const key_pattern = Regex("([^\n\r=]*)([\n\r=])", Base.PCRE.ANCHORED)
 function key (state)
     m = match(key_pattern, state.subject, state.index)
     if m == nothing
-        _error("Malformed table key name", state)
+        _error("Unexpected end of file", state)
     end
     state.index += m.match.endof
     if m.captures[2] != "="

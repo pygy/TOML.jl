@@ -72,6 +72,7 @@ function test()
             try
                 tml = TOML.parse(readall(tml))
                 display_error("should have failed but didn't.")
+                print(tml)
                 global exitstatus = 1
             catch err
                 if !isa(err, TOML.TOMLError)
@@ -93,6 +94,7 @@ jsnval = [
 ]
 
 function jsn2data(jsn)
+    # println(jsn)
     if "type" in keys(jsn)
         jsnval[jsn["type"]](jsn["value"])
     else

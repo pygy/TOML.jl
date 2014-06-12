@@ -1,0 +1,13 @@
+{
+    "abc":{
+        "cde":{
+            "efg":{
+                "type":"array", 
+                "value":[
+                    {"foo":{"type": "integer", "value": "5"}},
+                    {"faa":{"type": "integer", "value": "6"}}
+                ]
+            }
+        }
+    }
+}
