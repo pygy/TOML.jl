@@ -248,7 +248,7 @@ function string_value (state::ParserState)
         end
         push!(buf, chr)
     end
-    Base.utf8(CharString(buf))
+    Base.utf8(buf)
 end
 
 
