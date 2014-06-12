@@ -2,12 +2,13 @@
 
 A [TOML v0.2.0][toml] parser for [Julia][julia].
 
-Julia v0.2: [![Build Status](http://iainnz.github.io/packages.julialang.org/badges/TOML_0.2.svg)][buildstatus] — Julia v0.3: [![Build Status](http://iainnz.github.io/packages.julialang.org/badges/TOML_0.3.svg)][buildstatus]
+Julia v0.2: [![Build Status](http://iainnz.github.io/packages.julialang.org/badges/TOML_0.2.svg)][buildstatusjulia03] — Julia v0.3: [![Build Status](http://iainnz.github.io/packages.julialang.org/badges/TOML_0.3.svg)][buildstatusjulia03]
 
 [tomljl]: https://github.com/pygy/TOML.jl
 [toml]: https://github.com/mojombo/toml
 [julia]: https://julialang.org
-[buildstatus]: http://status.julialang.org/
+[buildstatusjulia02]: http://pkg.julialang.org/?pkg=TOML&ver=0.2
+[buildstatusjulia03]: http://pkg.julialang.org/?pkg=TOML&ver=0.3
 
 ### Usage:
 
