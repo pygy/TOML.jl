@@ -65,25 +65,6 @@ function test()
             end
         end
     end
-    
-    print("Valid byte array: ")
-    try
-        tml = TOML.parse("foo = 5".data)
-        if tml == (UTF8String=>Any)[utf8("foo")=>int64(5)]
-            display_success("Ok")
-        else
-            display_error("unexpected result.\nTOML:\n$tml\n\nJSON:\n"*
-                """(UTF8String=>Any)["foo"=>5]""" * "\n")
-            global exitstatus = 1
-        end
-    catch err
-        if !isa(err, TOML.TOMLError)
-            rethrow(err)
-        end
-        display_error("couldn't be parsed.\n" * repr(err))
-        global exitstatus = 1
-    end
-
 
     for t in invalid
         println("Invalid $t:")
