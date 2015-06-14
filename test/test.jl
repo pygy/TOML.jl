@@ -2,6 +2,7 @@ module TestTOML
 
 using TOML
 using JSON
+using Compat
 
 function parsedate(str::String) #for the tests.
     d = match(TOML.date_pattern, str)
@@ -84,21 +85,21 @@ function test()
     end
 end
 
-jsnval = [
+jsnval = @compat Dict{ASCIIString,Function}(
     "string" =>identity,
     "float"  =>parsefloat,
     "integer"=>parseint,
     "datetime"   => parsedate,
     "array"  => (a -> map(jsn2data, a)),
     "bool"   => (b -> b == "true")
-]
+)
 
 function jsn2data(jsn)
     # println(jsn)
     if "type" in keys(jsn)
         jsnval[jsn["type"]](jsn["value"])
     else
-        {k => jsn2data(v) for (k, v) in jsn}
+        @compat Dict{Any,Any}([k => jsn2data(v) for (k, v) in jsn])
     end
 end
 

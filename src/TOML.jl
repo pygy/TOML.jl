@@ -2,6 +2,8 @@ module TOML
 
 VERSION = v"0.1.2"
 
+using Compat
+
 
 if Base.VERSION >= v"0.4.0-dev+5050"
     anchored_regex(r) = Regex(r, Base.PCRE.ANCHORED, 0)
@@ -32,7 +34,7 @@ type ParserState
                 "(no method convert(Type{UTF8String}, $T))."))
         end
         BOM = length(subject) > 0 && subject[1] == '\ufeff'  ? true : false
-        maintbl = (UTF8String => Any)[]
+        maintbl = Dict{UTF8String,Any}()
         new(
             subject,
             BOM ? 4 : 1,      # index. Strip the BOM if present.
@@ -100,7 +102,7 @@ function table (state::ParserState)
                 _error("Key \"$k\" already defined", state)
             end
         else
-            tbl[k] = (UTF8String => Any)[]
+            tbl[k] = Dict{UTF8String,Any}()
             tbl = tbl[k]
         end
     end
@@ -139,16 +141,16 @@ function table_array (state::ParserState)
                 if !isa(tbl[k], Array{Dict{UTF8String, Any}, 1})
                     _error("Attempt to overwrite value with array", state)
                 end
-                push!(tbl[k], (UTF8String => Any)[])
+                push!(tbl[k], Dict{UTF8String,Any}())
                 tbl = last(tbl[k])
                 break
             end
         else
             if i < length(keys)
-                tbl[k] = (UTF8String => Any)[]
+                tbl[k] = Dict{UTF8String,Any}()
                 tbl = tbl[k]
             else # we're done
-                tbl[k] = [(UTF8String=>Any)[]]
+                tbl[k] = [Dict{UTF8String,Any}()]
                 tbl = last(tbl[k])
                 break
             end
@@ -209,7 +211,7 @@ function value (state)
 end
 
 
-valid_escape = [
+valid_escape = @compat Dict{Char,Char}(
     '0'  => '\0',
     '"'  => '"',
     '\\' => '\\',
@@ -219,7 +221,7 @@ valid_escape = [
     'n'  => '\n',
     'r'  => '\r',
     't'  => '\t',
-]
+)
 
 function string_value (state::ParserState)
     buf = (Char)[]
@@ -283,10 +285,6 @@ function numeric_value (state::ParserState)
     try
         numrepr = string(acc...)
         num = parsenum(NumTyp, numrepr)
-        # in Julia v0.2 `parseint()` doesn't detect overflows, but `parse()` does.
-        Base.VERSION < v"0.3-prerelease" &&
-            NumTyp == Int64 &&
-            Base.parse(numrepr)
     catch err
         _error("Couldn't parse number ($(repr(err)))", state)
     end
@@ -295,7 +293,7 @@ end
 
 
 function array_value(state)
-    ary = {}
+    ary = Any[]
     local typ = Any
     while next_non_comment!(state) != ']' # covers empty arrays and trailing comas
         state.index -= 1
