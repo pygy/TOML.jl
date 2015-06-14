@@ -1,5 +1,5 @@
 # waiting for official Timestamp support in Julia. Calendar.jl is too slow to load.
-const date_pattern = Regex("(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})Z", Base.PCRE.ANCHORED)
+const date_pattern = anchored_regex("(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})Z")
 
 immutable DateTime
     year::Int

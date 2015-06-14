@@ -3,6 +3,13 @@ module TOML
 VERSION = v"0.1.2"
 
 
+if Base.VERSION >= v"0.4.0-dev+5050"
+    anchored_regex(r) = Regex(r, Base.PCRE.ANCHORED, 0)
+else
+    anchored_regex(r) = Regex(r, Base.PCRE.ANCHORED)
+end
+
+
 include("datetime.jl")
 
 
@@ -65,7 +72,7 @@ function parse(subject::Union(String, Array{Uint8, 1}))
 end
 
 
-const table_pattern = Regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]", Base.PCRE.ANCHORED)
+const table_pattern = anchored_regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]")
 
 function table (state::ParserState)
     m = match(table_pattern, state.subject, state.index)
@@ -103,7 +110,7 @@ function table (state::ParserState)
 end
 
 
-const table_array_pattern = Regex("[ \t]*([^ \t\r\n]?[^\]\r\n]*)\]\]", Base.PCRE.ANCHORED)
+const table_array_pattern = anchored_regex("[ \t]*([^ \t\r\n]?[^\]\r\n]*)\]\]")
 
 function table_array (state::ParserState)
     m = match(table_array_pattern, state.subject, state.index)
@@ -152,7 +159,7 @@ function table_array (state::ParserState)
 end
 
 
-const key_pattern = Regex("([^\n\r=]*)([\n\r=])", Base.PCRE.ANCHORED)
+const key_pattern = anchored_regex("([^\n\r=]*)([\n\r=])")
 
 function key (state)
     m = match(key_pattern, state.subject, state.index)
