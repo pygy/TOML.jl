@@ -7,7 +7,7 @@ using Compat
 function parsedate(str::AbstractString) #for the tests.
     d = match(TOML.date_pattern, str)
     if d == nothing ;; error("Invalid date string.") end
-    TOML.DateTime(map(parseint, d.captures)...)
+    TOML.DateTime(map(s -> parse(Int, s), d.captures)...)
 end
 
 testdir = Base.source_path()[1:end-8]
@@ -87,8 +87,8 @@ end
 
 jsnval = @compat Dict{ASCIIString,Function}(
     "string" =>identity,
-    "float"  =>parsefloat,
-    "integer"=>parseint,
+    "float"  => (s -> parse(Float64, s)),
+    "integer"=> (s -> parse(Int, s)),
     "datetime"   => parsedate,
     "array"  => (a -> map(jsn2data, a)),
     "bool"   => (b -> b == "true")

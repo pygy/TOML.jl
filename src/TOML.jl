@@ -201,7 +201,7 @@ function value(state)
         return false
     elseif (d = match(date_pattern, state.subject, state.index - 1); d != nothing)
         state.index += 19
-        return ymd_hms(map(parseint, d.captures)..., "UTC")
+        return ymd_hms(map(s -> Base.parse(Int, s), d.captures)..., "UTC")
     elseif c == '-' || '0' <= c <= '9'
         state.index -= 1
         return numeric_value(state)
@@ -237,7 +237,7 @@ function string_value(state::ParserState)
             if chr == 'u'
                 num = (nextchar!(state), nextchar!(state), nextchar!(state), nextchar!(state))
                 try
-                    chr = parseint(string(num...), 16)
+                    chr = Base.parse(Int, string(num...), 16)
                 catch
                     _error("Invalid Unicode escape sequence '\\u$(string(num...))'", state)
                 end
@@ -256,7 +256,6 @@ end
 
 
 function numeric_value(state::ParserState)
-    parsenum = parseint
     NumTyp = Int64
     acc = (Char)[]
     firstdigit = 1
@@ -277,14 +276,14 @@ function numeric_value(state::ParserState)
         if last(acc) == '.'
             _error("Malformed number", state)
         end
-        parsenum, NumTyp = parsefloat, Float64
+        NumTyp = Float64
     end
     state.index -= c==:eof ? 0 : 1
 
     num = 0
     try
         numrepr = string(acc...)
-        num = parsenum(NumTyp, numrepr)
+        num = Base.parse(NumTyp, numrepr)
     catch err
         _error("Couldn't parse number ($(repr(err)))", state)
     end
