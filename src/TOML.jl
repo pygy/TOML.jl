@@ -23,8 +23,8 @@ type ParserState
     cur_tbl::Dict{UTF8String, Any}
     tbl_names::Set{UTF8String}
 
-    function ParserState{T<:Union(String, Array{Uint8, 1})}(subject::T)
-        if isa(subject, Union(ByteString, Array{Uint8, 1})) && !is_valid_utf8(subject)
+    function ParserState{T<: @compat Union{AbstractString, Array{UInt8, 1}}}(subject::T)
+        if isa(subject, @compat Union{ByteString, Array{UInt8, 1}}) && !isvalid(UTF8String, subject)
             throw(TOMLError("$T with invalid UTF-8 byte sequence."))
         end
         try
@@ -50,7 +50,7 @@ end
 include("util.jl")
 
 
-function parse(subject::Union(String, Array{Uint8, 1}))
+function parse(subject:: @compat Union{AbstractString, Array{UInt8, 1}})
     try
         state = ParserState(subject)
         while true
@@ -76,7 +76,7 @@ end
 
 const table_pattern = anchored_regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]")
 
-function table (state::ParserState)
+function table(state::ParserState)
     m = match(table_pattern, state.subject, state.index)
     if m == nothing
         _error("Malformed table name", state)
@@ -98,7 +98,7 @@ function table (state::ParserState)
                 !(join(keys, ".") in state.tbl_names)
             )
                 tbl = tbl[k]
-            else 
+            else
                 _error("Key \"$k\" already defined", state)
             end
         else
@@ -114,7 +114,7 @@ end
 
 const table_array_pattern = anchored_regex("[ \t]*([^ \t\r\n]?[^\]\r\n]*)\]\]")
 
-function table_array (state::ParserState)
+function table_array(state::ParserState)
     m = match(table_array_pattern, state.subject, state.index)
     if m == nothing
         _error("Malformed table array name", state)
@@ -129,7 +129,7 @@ function table_array (state::ParserState)
         end
         if haskey(tbl, k)
             if i < length(keys)
-                if !isa(tbl[k], Union(Array{Dict{UTF8String, Any}, 1}, Dict{UTF8String, Any}))
+                if !isa(tbl[k], @compat Union{Array{Dict{UTF8String, Any}, 1}, Dict{UTF8String, Any}})
                     _error("Attempt to overwrite key $(join(keys[1:i], '.'))", state)
                 end
                 if isa(tbl[k], Dict)
@@ -163,7 +163,7 @@ end
 
 const key_pattern = anchored_regex("([^\n\r=]*)([\n\r=])")
 
-function key (state)
+function key(state)
     m = match(key_pattern, state.subject, state.index)
     if m == nothing
         _error("Unexpected end of file", state)
@@ -184,7 +184,7 @@ function key (state)
 end
 
 
-function value (state)
+function value(state)
     c = next_non_space!(state)
     if c == :eof || c == '\r' || c == '\n'
         _error("Value expected", state)
@@ -201,7 +201,7 @@ function value (state)
         return false
     elseif (d = match(date_pattern, state.subject, state.index - 1); d != nothing)
         state.index += 19
-        return ymd_hms(map(parseint, d.captures)..., "UTC")
+        return ymd_hms(map(s -> Base.parse(Int, s), d.captures)..., "UTC")
     elseif c == '-' || '0' <= c <= '9'
         state.index -= 1
         return numeric_value(state)
@@ -223,7 +223,7 @@ valid_escape = @compat Dict{Char,Char}(
     't'  => '\t',
 )
 
-function string_value (state::ParserState)
+function string_value(state::ParserState)
     buf = (Char)[]
     while (chr = nextchar!(state)) != '"'
         if chr == :eof
@@ -237,7 +237,7 @@ function string_value (state::ParserState)
             if chr == 'u'
                 num = (nextchar!(state), nextchar!(state), nextchar!(state), nextchar!(state))
                 try
-                    chr = parseint(string(num...), 16)
+                    chr = Base.parse(Int, string(num...), 16)
                 catch
                     _error("Invalid Unicode escape sequence '\\u$(string(num...))'", state)
                 end
@@ -255,8 +255,7 @@ function string_value (state::ParserState)
 end
 
 
-function numeric_value (state::ParserState)
-    parsenum = parseint
+function numeric_value(state::ParserState)
     NumTyp = Int64
     acc = (Char)[]
     firstdigit = 1
@@ -277,14 +276,14 @@ function numeric_value (state::ParserState)
         if last(acc) == '.'
             _error("Malformed number", state)
         end
-        parsenum, NumTyp = parsefloat, Float64
+        NumTyp = Float64
     end
     state.index -= c==:eof ? 0 : 1
 
     num = 0
     try
         numrepr = string(acc...)
-        num = parsenum(NumTyp, numrepr)
+        num = Base.parse(NumTyp, numrepr)
     catch err
         _error("Couldn't parse number ($(repr(err)))", state)
     end
