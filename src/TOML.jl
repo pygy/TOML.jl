@@ -23,8 +23,8 @@ type ParserState
     cur_tbl::Dict{UTF8String, Any}
     tbl_names::Set{UTF8String}
 
-    function ParserState{T<:Union{AbstractString, Array{UInt8, 1}}}(subject::T)
-        if isa(subject, Union{ByteString, Array{UInt8, 1}}) && !isvalid(UTF8String, subject)
+    function ParserState{T<: @compat Union{AbstractString, Array{UInt8, 1}}}(subject::T)
+        if isa(subject, @compat Union{ByteString, Array{UInt8, 1}}) && !isvalid(UTF8String, subject)
             throw(TOMLError("$T with invalid UTF-8 byte sequence."))
         end
         try
@@ -50,7 +50,7 @@ end
 include("util.jl")
 
 
-function parse(subject::Union{AbstractString, Array{UInt8, 1}})
+function parse(subject:: @compat Union{AbstractString, Array{UInt8, 1}})
     try
         state = ParserState(subject)
         while true
@@ -129,7 +129,7 @@ function table_array(state::ParserState)
         end
         if haskey(tbl, k)
             if i < length(keys)
-                if !isa(tbl[k], Union{Array{Dict{UTF8String, Any}, 1}, Dict{UTF8String, Any}})
+                if !isa(tbl[k], @compat Union{Array{Dict{UTF8String, Any}, 1}, Dict{UTF8String, Any}})
                     _error("Attempt to overwrite key $(join(keys[1:i], '.'))", state)
                 end
                 if isa(tbl[k], Dict)
