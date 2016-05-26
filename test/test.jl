@@ -4,7 +4,7 @@ using TOML
 using JSON
 using Compat
 
-function parsedate(str::String) #for the tests.
+function parsedate(str::AbstractString) #for the tests.
     d = match(TOML.date_pattern, str)
     if d == nothing ;; error("Invalid date string.") end
     TOML.DateTime(map(parseint, d.captures)...)

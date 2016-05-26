@@ -23,8 +23,8 @@ type ParserState
     cur_tbl::Dict{UTF8String, Any}
     tbl_names::Set{UTF8String}
 
-    function ParserState{T<:Union(String, Array{Uint8, 1})}(subject::T)
-        if isa(subject, Union(ByteString, Array{Uint8, 1})) && !is_valid_utf8(subject)
+    function ParserState{T<:Union{AbstractString, Array{UInt8, 1}}}(subject::T)
+        if isa(subject, Union{ByteString, Array{UInt8, 1}}) && !isvalid(UTF8String, subject)
             throw(TOMLError("$T with invalid UTF-8 byte sequence."))
         end
         try
@@ -50,7 +50,7 @@ end
 include("util.jl")
 
 
-function parse(subject::Union(String, Array{Uint8, 1}))
+function parse(subject::Union{AbstractString, Array{UInt8, 1}})
     try
         state = ParserState(subject)
         while true
@@ -76,7 +76,7 @@ end
 
 const table_pattern = anchored_regex("[ \t]*([^ \t\r\n][^\]\r\n]*)\]")
 
-function table (state::ParserState)
+function table(state::ParserState)
     m = match(table_pattern, state.subject, state.index)
     if m == nothing
         _error("Malformed table name", state)
@@ -98,7 +98,7 @@ function table (state::ParserState)
                 !(join(keys, ".") in state.tbl_names)
             )
                 tbl = tbl[k]
-            else 
+            else
                 _error("Key \"$k\" already defined", state)
             end
         else
@@ -114,7 +114,7 @@ end
 
 const table_array_pattern = anchored_regex("[ \t]*([^ \t\r\n]?[^\]\r\n]*)\]\]")
 
-function table_array (state::ParserState)
+function table_array(state::ParserState)
     m = match(table_array_pattern, state.subject, state.index)
     if m == nothing
         _error("Malformed table array name", state)
@@ -129,7 +129,7 @@ function table_array (state::ParserState)
         end
         if haskey(tbl, k)
             if i < length(keys)
-                if !isa(tbl[k], Union(Array{Dict{UTF8String, Any}, 1}, Dict{UTF8String, Any}))
+                if !isa(tbl[k], Union{Array{Dict{UTF8String, Any}, 1}, Dict{UTF8String, Any}})
                     _error("Attempt to overwrite key $(join(keys[1:i], '.'))", state)
                 end
                 if isa(tbl[k], Dict)
@@ -163,7 +163,7 @@ end
 
 const key_pattern = anchored_regex("([^\n\r=]*)([\n\r=])")
 
-function key (state)
+function key(state)
     m = match(key_pattern, state.subject, state.index)
     if m == nothing
         _error("Unexpected end of file", state)
@@ -184,7 +184,7 @@ function key (state)
 end
 
 
-function value (state)
+function value(state)
     c = next_non_space!(state)
     if c == :eof || c == '\r' || c == '\n'
         _error("Value expected", state)
@@ -223,7 +223,7 @@ valid_escape = @compat Dict{Char,Char}(
     't'  => '\t',
 )
 
-function string_value (state::ParserState)
+function string_value(state::ParserState)
     buf = (Char)[]
     while (chr = nextchar!(state)) != '"'
         if chr == :eof
@@ -255,7 +255,7 @@ function string_value (state::ParserState)
 end
 
 
-function numeric_value (state::ParserState)
+function numeric_value(state::ParserState)
     parsenum = parseint
     NumTyp = Int64
     acc = (Char)[]

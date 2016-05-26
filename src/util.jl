@@ -1,12 +1,12 @@
 DBG = false
 
-macro debug (msg)
+macro debug(msg)
     if DBG
-        :(println ($msg))
+        :(println($msg))
     end
 end
 
-function idem(needle::String, haystack::String, idx)
+function idem(needle::AbstractString, haystack::AbstractString, idx)
     for c1 in needle
         if done(haystack, idx)
             return false
@@ -30,7 +30,7 @@ function nextchar!(state::ParserState)
     char
 end
 
-function next_non_space! (state::ParserState)
+function next_non_space!(state::ParserState)
     while true
         c = nextchar!(state)
         if c != ' ' && c != '\t'
@@ -39,7 +39,7 @@ function next_non_space! (state::ParserState)
     end
 end
 
-function endlineP (c, state::ParserState) # Where 'P' really is a '?'.
+function endlineP(c, state::ParserState) # Where 'P' really is a '?'.
     if c == '\r' && state.subject[state.index + 1] == '\n'
         nextchar!(state)
     end
@@ -51,7 +51,7 @@ function endlineP (c, state::ParserState) # Where 'P' really is a '?'.
     end
 end
 
-function endline! (state::ParserState)
+function endline!(state::ParserState)
     c = next_non_space!(state);
     if endlineP(c, state)
         return
@@ -66,7 +66,7 @@ function endline! (state::ParserState)
     end
 end
 
-function next_non_comment! (state::ParserState)
+function next_non_comment!(state::ParserState)
     local in_comment = false
     while true
         c = nextchar!(state)
