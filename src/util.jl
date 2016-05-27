@@ -40,7 +40,7 @@ function next_non_space!(state::ParserState)
 end
 
 function endlineP(c, state::ParserState) # Where 'P' really is a '?'.
-    if c == '\r' && state.subject[state.index + 1] == '\n'
+    if c == '\r' && state.subject[state.index] == '\n'
         nextchar!(state)
     end
     if c == '\r' || c == '\n'
